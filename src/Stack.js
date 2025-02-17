@@ -1,3 +1,4 @@
+/** @import * as Immutable from '../type-definitions/immutable'*/
 import { wholeSlice, resolveBegin, resolveEnd, wrapIndex } from './TrieUtils';
 import { IndexedCollection, IndexedCollectionImpl } from './Collection';
 import { ArraySeq } from './Seq';
@@ -9,18 +10,29 @@ import { asMutable } from './methods/asMutable';
 import { wasAltered } from './methods/wasAltered';
 import { withMutations } from './methods/withMutations';
 
-export const Stack = value =>
+/**
+ * @type  {typeof Immutable.Stack}
+ */
+export const Stack = (value) =>
   value === undefined || value === null
     ? emptyStack()
     : isStack(value)
-    ? value
-    : emptyStack().pushAll(value);
+      ? value
+      : emptyStack().pushAll(value);
 
 Stack.of = function (/*...values*/) {
   return Stack(arguments);
 };
 
+/**
+ * @template T
+ */
 export class StackImpl extends IndexedCollectionImpl {
+  /**
+   * @template T
+   * @param {Iterable<T> | ArrayLike<T>} [value]
+   * @returns {StackImpl<T>}
+   */
   create(value) {
     return Stack(value);
   }
@@ -31,6 +43,11 @@ export class StackImpl extends IndexedCollectionImpl {
 
   // @pragma Access
 
+  /**
+   * @param {number} index
+   * @param {T} notSetValue
+   * @returns {T}
+   */
   get(index, notSetValue) {
     let head = this._head;
     index = wrapIndex(this, index);
@@ -40,12 +57,20 @@ export class StackImpl extends IndexedCollectionImpl {
     return head ? head.value : notSetValue;
   }
 
+  /**
+   *
+   * @returns {T}
+   */
   peek() {
     return this._head && this._head.value;
   }
 
   // @pragma Modification
 
+  /**
+   * @param {...T}
+   * @returns {StackImpl<T>}
+   */
   push(/*...values*/) {
     if (arguments.length === 0) {
       return this;
@@ -68,6 +93,11 @@ export class StackImpl extends IndexedCollectionImpl {
     return makeStack(newSize, head);
   }
 
+  /**
+   *
+   * @param {Iterable<T> | ArrayLike<T>} [iter]
+   * @returns {StackImpl<T>}
+   */
   pushAll(iter) {
     iter = IndexedCollection(iter);
     if (iter.size === 0) {
@@ -100,6 +130,10 @@ export class StackImpl extends IndexedCollectionImpl {
     return this.slice(1);
   }
 
+  /**
+   *
+   * @returns {StackImpl<T>}
+   */
   clear() {
     if (this.size === 0) {
       return this;
@@ -114,6 +148,12 @@ export class StackImpl extends IndexedCollectionImpl {
     return emptyStack();
   }
 
+  /**
+   *
+   * @param {number} begin
+   * @param {number} end
+   * @returns {StackImpl<T>}
+   */
   slice(begin, end) {
     if (wholeSlice(begin, end, this.size)) {
       return this;
@@ -211,6 +251,14 @@ StackPrototype['@@transducer/result'] = function (obj) {
   return obj.asImmutable();
 };
 
+/**
+ *
+ * @param {number} size
+ * @param {T} head
+ * @param {unknown} ownerID
+ * @param {number} hash
+ * @returns {StackImpl<T>}
+ */
 function makeStack(size, head, ownerID, hash) {
   const map = Object.create(StackPrototype);
   map.size = size;
@@ -222,6 +270,10 @@ function makeStack(size, head, ownerID, hash) {
 }
 
 let EMPTY_STACK;
+/**
+ *
+ * @returns {StackImpl<any>}
+ */
 function emptyStack() {
   return EMPTY_STACK || (EMPTY_STACK = makeStack(0));
 }

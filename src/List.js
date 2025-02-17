@@ -1,3 +1,5 @@
+// @ts-check
+/** @import * as Immutable from '../type-definitions/immutable'*/
 import {
   DELETE,
   SHIFT,
@@ -26,7 +28,15 @@ import { asImmutable } from './methods/asImmutable';
 import { wasAltered } from './methods/wasAltered';
 import assertNotInfinite from './utils/assertNotInfinite';
 
-export const List = value => {
+/**
+ * @template T
+ * @typedef  {ReturnType<typeof Immutable.List<T>>} ImmutableList<T>
+ */
+
+/**
+ * @type  {typeof Immutable.List}
+ */
+export const List = (value) => {
   const empty = emptyList();
   if (value === undefined || value === null) {
     return empty;
@@ -41,9 +51,10 @@ export const List = value => {
   }
   assertNotInfinite(size);
   if (size > 0 && size < SIZE) {
-    return makeList(0, size, SHIFT, null, new VNode(iter.toArray()));
+    return new ListImpl(0, size, SHIFT, null, new VNode(iter.toArray()));
   }
-  return empty.withMutations(list => {
+  // @ts-ignore
+  return empty.withMutations((list) => {
     list.setSize(size);
     iter.forEach((v, i) => list.set(i, v));
   });
@@ -53,35 +64,94 @@ List.of = function (/*...values*/) {
   return List(arguments);
 };
 
+/**
+ * @template T
+ */
 export class ListImpl extends IndexedCollectionImpl {
   // @pragma Construction
 
+  /**
+   * @param {number} origin
+   * @param {number} capacity
+   * @param {number} level
+   * @param {VNode<T> | null} [root]
+   * @param {VNode<T> | null} [tail]
+   * @param {unknown} [ownerID]
+   * @param {number} [hash]
+   */
+  constructor(origin, capacity, level, root, tail, ownerID, hash) {
+    super();
+    this.size = capacity - origin;
+    this._origin = origin;
+    this._capacity = capacity;
+    this._level = level;
+    this._root = root;
+    this._tail = tail;
+    this.__ownerID = ownerID;
+    this.__hash = hash;
+    this.__altered = false;
+  }
+
+  /**
+   * Creates a new list from the given value
+   * @param {Iterable<T> | ArrayLike<T>} [value] - The value to create a list from
+   * @returns {ImmutableList<T>} A new list
+   */
   create(value) {
     return List(value);
   }
 
+  /**
+   * @returns {string} String representation of the list
+   */
   toString() {
+    // @ts-ignore
     return this.__toString('List [', ']');
   }
 
   // @pragma Access
 
+  /**
+   * @param {number} index
+   * @param {T} [notSetValue]
+   * @returns {T | undefined}
+   */
   get(index, notSetValue) {
     index = wrapIndex(this, index);
     if (index >= 0 && index < this.size) {
       index += this._origin;
       const node = listNodeFor(this, index);
+      // @ts-ignore
       return node && node.array[index & MASK];
     }
     return notSetValue;
   }
 
+  /**
+   * @param {number} index - The index to check
+   * @returns {boolean} True if the index exists in the list
+   */
+  has(index) {
+    index = wrapIndex(this, index);
+    return index >= 0 && index < this.size;
+  }
+
   // @pragma Modification
 
+  /**
+   * @param {number} index
+   * @param {T} value
+   * @returns {ListImpl<T>}
+   */
   set(index, value) {
     return updateList(this, index, value);
   }
 
+  /**
+   *
+   * @param {number} index
+   * @returns {ListImpl<T>}
+   */
   remove(index) {
     return !this.has(index)
       ? this
@@ -92,10 +162,74 @@ export class ListImpl extends IndexedCollectionImpl {
           : this.splice(index, 1);
   }
 
+  /**
+   *
+   * @param {number} index
+   * @param {T} value
+   * @returns {ListImpl<T>}
+   */
   insert(index, value) {
     return this.splice(index, 0, value);
   }
 
+  /**
+   * @param {number} index - The starting index
+   * @param {number} removeNum - Number of elements to remove
+   * @param {...T} values - Values to insert
+   * @returns {ListImpl<T>} A new list with the splice operation applied
+   */
+  splice(index, removeNum, ...values) {
+    index = wrapIndex(this, index);
+    if (index < 0) {
+      index = this.size + index;
+    }
+    if (index < 0) {
+      index = 0;
+    }
+    if (index > this.size) {
+      index = this.size;
+    }
+
+    const oldSize = this.size;
+    const newSize = oldSize + values.length - removeNum;
+
+    if (newSize < 0) {
+      return this;
+    }
+
+    if (newSize === 0) {
+      return this.clear();
+    }
+
+    if (this.__ownerID) {
+      this.size = newSize;
+      this._origin = 0;
+      this._capacity = newSize;
+      this._level = SHIFT;
+      this._root = this._tail = this.__hash = undefined;
+      this.__altered = true;
+      return this;
+    }
+
+    // @ts-ignore
+    return this.withMutations((list) => {
+      setListBounds(list, 0, newSize);
+      for (let i = 0; i < index; i++) {
+        list.set(i, this.get(i));
+      }
+      for (let i = 0; i < values.length; i++) {
+        list.set(index + i, values[i]);
+      }
+      for (let i = index + values.length; i < oldSize; i++) {
+        list.set(i, this.get(i));
+      }
+    });
+  }
+
+  /**
+   *
+   * @returns {ListImpl<T>}
+   */
   clear() {
     if (this.size === 0) {
       return this;
@@ -110,9 +244,14 @@ export class ListImpl extends IndexedCollectionImpl {
     return emptyList();
   }
 
+  /**
+   * @param {...T} values
+   * @returns {ImmutableList<T>}
+   */
   push(/*...values*/) {
     const values = arguments;
     const oldSize = this.size;
+    // @ts-ignore
     return this.withMutations((list) => {
       setListBounds(list, 0, oldSize + values.length);
       for (let ii = 0; ii < values.length; ii++) {
@@ -121,12 +260,22 @@ export class ListImpl extends IndexedCollectionImpl {
     });
   }
 
+  /**
+   *
+   * @returns {ListImpl<T>}
+   */
   pop() {
     return setListBounds(this, 0, -1);
   }
 
+  /**
+   * @param {...T} values
+   * @returns {ImmutableList<T>}
+   */
   unshift(/*...values*/) {
     const values = arguments;
+
+    // @ts-ignore
     return this.withMutations((list) => {
       setListBounds(list, -values.length);
       for (let ii = 0; ii < values.length; ii++) {
@@ -135,13 +284,21 @@ export class ListImpl extends IndexedCollectionImpl {
     });
   }
 
+  /**
+   *
+   * @returns {ListImpl<T>}
+   */
   shift() {
     return setListBounds(this, 1);
   }
 
   // @pragma Composition
 
+
   concat(/*...collections*/) {
+    /**
+     * @type {Array<ReturnType<typeof IndexedCollection<T>>>}
+     */
     const seqs = [];
     for (let i = 0; i < arguments.length; i++) {
       const argument = arguments[i];
@@ -155,21 +312,35 @@ export class ListImpl extends IndexedCollectionImpl {
       }
     }
     if (seqs.length === 0) {
+      // @ts-ignore
       return this;
     }
     if (this.size === 0 && !this.__ownerID && seqs.length === 1) {
       return List(seqs[0]);
     }
+    // @ts-ignore
     return this.withMutations((list) => {
       seqs.forEach((seq) => seq.forEach((value) => list.push(value)));
     });
   }
 
+  /**
+   *
+   * @param {number} size
+   * @returns {ListImpl<T>}
+   */
   setSize(size) {
     return setListBounds(this, 0, size);
   }
 
+  /**
+   * Maps over the list elements
+   * @param {function(T, number, ImmutableList<T>): T} mapper - The mapping function
+   * @param {*} [context] - The context to bind to the mapper function
+   * @returns {ImmutableList<T>} A new list with mapped values
+   */
   map(mapper, context) {
+    // @ts-ignore
     return this.withMutations((list) => {
       for (let i = 0; i < this.size; i++) {
         list.set(i, mapper.call(context, list.get(i), i, this));
@@ -179,9 +350,17 @@ export class ListImpl extends IndexedCollectionImpl {
 
   // @pragma Iteration
 
+  /**
+   *
+   * @param {number} [begin]
+   * @param {number} [end]
+   * @returns {ListImpl<T>}
+   */
+  // @ts-ignore
   slice(begin, end) {
     const size = this.size;
     if (wholeSlice(begin, end, size)) {
+      // @ts-ignore
       return this;
     }
     return setListBounds(
@@ -191,6 +370,12 @@ export class ListImpl extends IndexedCollectionImpl {
     );
   }
 
+  /**
+   * 
+   * @param {import('./Iterator').IterationType} type 
+   * @param {boolean} reverse 
+   * @returns {Iterator<T>}
+   */
   __iterator(type, reverse) {
     let index = reverse ? this.size : 0;
     const values = iterateList(this, reverse);
@@ -202,6 +387,11 @@ export class ListImpl extends IndexedCollectionImpl {
     });
   }
 
+  /**
+   * @param {(value: T | undefined, key: number, collection: ListImpl<T>) => {} | T | undefined} fn
+   * @param {boolean} reverse
+   * @returns {number}
+   */
   __iterate(fn, reverse) {
     let index = reverse ? this.size : 0;
     const values = iterateList(this, reverse);
@@ -214,8 +404,14 @@ export class ListImpl extends IndexedCollectionImpl {
     return index;
   }
 
+  /**
+   * Ensures the list has the correct owner ID for mutation tracking
+   * @param {unknown} ownerID - The owner ID to assign
+   * @returns {ListImpl<T>} This list or a new list with the owner ID
+   */
   __ensureOwner(ownerID) {
     if (ownerID === this.__ownerID) {
+      // @ts-ignore
       return this;
     }
     if (!ownerID) {
@@ -224,9 +420,11 @@ export class ListImpl extends IndexedCollectionImpl {
       }
       this.__ownerID = ownerID;
       this.__altered = false;
+      // @ts-ignore
       return this;
     }
-    return makeList(
+    // @ts-ignore
+    return new ListImpl(
       this._origin,
       this._capacity,
       this._level,
@@ -243,17 +441,22 @@ List.isList = isList;
 const ListPrototype = ListImpl.prototype;
 ListPrototype[IS_LIST_SYMBOL] = true;
 ListPrototype[DELETE] = ListPrototype.remove;
-ListPrototype.merge = ListPrototype.concat;
-ListPrototype.setIn = setIn;
-ListPrototype.deleteIn = ListPrototype.removeIn = deleteIn;
-ListPrototype.update = update;
-ListPrototype.updateIn = updateIn;
-ListPrototype.mergeIn = mergeIn;
-ListPrototype.mergeDeepIn = mergeDeepIn;
-ListPrototype.withMutations = withMutations;
-ListPrototype.wasAltered = wasAltered;
-ListPrototype.asImmutable = asImmutable;
-ListPrototype['@@transducer/init'] = ListPrototype.asMutable = asMutable;
+ListPrototype['merge'] = ListPrototype.concat;
+ListPrototype['setIn'] = setIn;
+ListPrototype['deleteIn'] = ListPrototype['removeIn'] = deleteIn;
+ListPrototype['update'] = update;
+ListPrototype['updateIn'] = updateIn;
+ListPrototype['mergeIn'] = mergeIn;
+ListPrototype['mergeDeepIn'] = mergeDeepIn;
+
+/**
+ * @template T
+ * @type {ImmutableList<T>["withMutations"]}
+ */
+ListPrototype['withMutations'] = withMutations;
+ListPrototype['wasAltered'] = wasAltered;
+ListPrototype['asImmutable'] = asImmutable;
+ListPrototype['@@transducer/init'] = ListPrototype['asMutable'] = asMutable;
 ListPrototype['@@transducer/step'] = function (result, arr) {
   return result.push(arr);
 };
@@ -261,7 +464,15 @@ ListPrototype['@@transducer/result'] = function (obj) {
   return obj.asImmutable();
 };
 
+/**
+ * @template T
+ */
 class VNode {
+  /**
+   *
+   * @param {Array<T | undefined> | Array<VNode<T> | undefined>} array
+   * @param {unknown} [ownerID]
+   */
   constructor(array, ownerID) {
     this.array = array;
     this.ownerID = ownerID;
@@ -269,6 +480,13 @@ class VNode {
 
   // TODO: seems like these methods are very similar
 
+  /**
+   *
+   * @param {unknown} ownerID
+   * @param {number} level
+   * @param {number} index
+   * @returns {VNode<T>}
+   */
   removeBefore(ownerID, level, index) {
     if (
       (index & ((1 << (level + SHIFT)) - 1)) === 0 ||
@@ -285,6 +503,7 @@ class VNode {
     if (level > 0) {
       const oldChild = this.array[originIndex];
       newChild =
+        // @ts-ignore
         oldChild && oldChild.removeBefore(ownerID, level - SHIFT, index);
       if (newChild === oldChild && removingFirst) {
         return this;
@@ -305,6 +524,13 @@ class VNode {
     return editable;
   }
 
+  /**
+   *
+   * @param {unknown} ownerID
+   * @param {number} level
+   * @param {number} index
+   * @returns {VNode<T>}
+   */
   removeAfter(ownerID, level, index) {
     if (
       index === (level ? 1 << (level + SHIFT) : SIZE) ||
@@ -319,6 +545,8 @@ class VNode {
 
     let newChild;
     if (level > 0) {
+      /** @type {VNode<T> | undefined} */
+      // @ts-ignore
       const oldChild = this.array[sizeIndex];
       newChild =
         oldChild && oldChild.removeAfter(ownerID, level - SHIFT, index);
@@ -338,20 +566,40 @@ class VNode {
 
 const DONE = {};
 
+/**
+ * @template T
+ * @param {ListImpl<T>} list
+ * @param {boolean} reverse
+ * @returns {T | undefined | DONE}
+ */
 function iterateList(list, reverse) {
   const left = list._origin;
   const right = list._capacity;
   const tailPos = getTailOffset(right);
+
   const tail = list._tail;
 
   return iterateNodeOrLeaf(list._root, list._level, 0);
 
+  /**
+   *
+   * @param {VNode<T> | undefined | null} node
+   * @param {number} level
+   * @param {number} offset
+   * @returns {() => {} | T | undefined }
+   */
   function iterateNodeOrLeaf(node, level, offset) {
     return level === 0
       ? iterateLeaf(node, offset)
       : iterateNode(node, level, offset);
   }
 
+  /**
+   *
+   * @param {VNode<T> | undefined | null} node
+   * @param {number} offset
+   * @returns {() => DONE | T | undefined }
+   */
   function iterateLeaf(node, offset) {
     const array = offset === tailPos ? tail && tail.array : node && node.array;
     let from = offset > left ? 0 : left - offset;
@@ -368,6 +616,13 @@ function iterateList(list, reverse) {
     };
   }
 
+  /**
+   * @template T
+   * @param {VNode<T> | undefined | null} node
+   * @param {number} level
+   * @param {number} offset
+   * @returns {() => {} | T | undefined }
+   */
   function iterateNode(node, level, offset) {
     let values;
     const array = node && node.array;
@@ -390,6 +645,7 @@ function iterateList(list, reverse) {
         }
         const idx = reverse ? --to : from++;
         values = iterateNodeOrLeaf(
+          // @ts-ignore
           array && array[idx],
           level - SHIFT,
           offset + (idx << level)
@@ -399,24 +655,24 @@ function iterateList(list, reverse) {
   }
 }
 
-function makeList(origin, capacity, level, root, tail, ownerID, hash) {
-  const list = Object.create(ListPrototype);
-  list.size = capacity - origin;
-  list._origin = origin;
-  list._capacity = capacity;
-  list._level = level;
-  list._root = root;
-  list._tail = tail;
-  list.__ownerID = ownerID;
-  list.__hash = hash;
-  list.__altered = false;
-  return list;
-}
 
+/**
+ * @template T
+ * @returns {ListImpl<T>}
+ */
 export function emptyList() {
-  return makeList(0, 0, SHIFT);
+  // @ts-ignore
+  return new ListImpl(0, 0, SHIFT);
 }
 
+
+/**
+ * @template T
+ * @param {ListImpl<T>} list
+ * @param {number} index
+ * @param {T | undefined} value
+ * @returns {ListImpl<T>}
+ */
 function updateList(list, index, value) {
   index = wrapIndex(list, index);
 
@@ -425,6 +681,7 @@ function updateList(list, index, value) {
   }
 
   if (index >= list.size || index < 0) {
+    // @ts-ignore
     return list.withMutations((list) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- TODO enable eslint here
       index < 0
@@ -439,8 +696,10 @@ function updateList(list, index, value) {
   let newRoot = list._root;
   const didAlter = MakeRef();
   if (index >= getTailOffset(list._capacity)) {
+    // @ts-ignore
     newTail = updateVNode(newTail, list.__ownerID, 0, index, value, didAlter);
   } else {
+    // @ts-ignore
     newRoot = updateVNode(
       newRoot,
       list.__ownerID,
@@ -462,9 +721,25 @@ function updateList(list, index, value) {
     list.__altered = true;
     return list;
   }
-  return makeList(list._origin, list._capacity, list._level, newRoot, newTail);
+  return new ListImpl(
+    list._origin,
+    list._capacity,
+    list._level,
+    newRoot,
+    newTail
+  );
 }
 
+/**
+ * @template T
+ * @param {VNode<T> | undefined | null} node
+ * @param {unknown} ownerID
+ * @param {number} level
+ * @param {number} index
+ * @param {T | undefined} value
+ * @param {{ value: boolean }} didAlter
+ * @returns {VNode<unknown> | undefined | null}
+ */
 function updateVNode(node, ownerID, level, index, value, didAlter) {
   const idx = (index >>> level) & MASK;
   const nodeHas = node && idx < node.array.length;
@@ -475,6 +750,8 @@ function updateVNode(node, ownerID, level, index, value, didAlter) {
   let newNode;
 
   if (level > 0) {
+    /** @type { VNode<T> | undefined} */
+    // @ts-ignore
     const lowerNode = node && node.array[idx];
     const newLowerNode = updateVNode(
       lowerNode,
@@ -488,6 +765,7 @@ function updateVNode(node, ownerID, level, index, value, didAlter) {
       return node;
     }
     newNode = editableVNode(node, ownerID);
+     // @ts-ignore
     newNode.array[idx] = newLowerNode;
     return newNode;
   }
@@ -509,13 +787,26 @@ function updateVNode(node, ownerID, level, index, value, didAlter) {
   return newNode;
 }
 
+/**
+ * @template {VNode<?> | undefined | null} NODE extends VNode<unknown> | undefined | null
+ * @param {NODE} node
+ * @param {unknown} ownerID
+ * @returns {NonNullable<NODE>}
+ */
 function editableVNode(node, ownerID) {
   if (ownerID && node && ownerID === node.ownerID) {
     return node;
   }
+  // @ts-ignore
   return new VNode(node ? node.array.slice() : [], ownerID);
 }
 
+/**
+ * @template T
+ * @param {ListImpl<T>} list
+ * @param {number} rawIndex
+ * @returns {VNode<T> | undefined | null}
+ */
 function listNodeFor(list, rawIndex) {
   if (rawIndex >= getTailOffset(list._capacity)) {
     return list._tail;
@@ -524,6 +815,7 @@ function listNodeFor(list, rawIndex) {
     let node = list._root;
     let level = list._level;
     while (node && level > 0) {
+      // @ts-ignore
       node = node.array[(rawIndex >>> level) & MASK];
       level -= SHIFT;
     }
@@ -531,6 +823,13 @@ function listNodeFor(list, rawIndex) {
   }
 }
 
+/**
+ * @template T
+ * @param {ListImpl<T>} list
+ * @param {number} begin
+ * @param {number} [end]
+ * @returns {ListImpl<T>}
+ */
 function setListBounds(list, begin, end) {
   // Sanitize begin & end using this shorthand for ToInt32(argument)
   // http://www.ecma-international.org/ecma-262/6.0/#sec-toint32
@@ -560,11 +859,13 @@ function setListBounds(list, begin, end) {
   }
 
   let newLevel = list._level;
+  /** @type {VNode<T> | undefined | null} */
   let newRoot = list._root;
 
   // New origin might need creating a higher root.
   let offsetShift = 0;
   while (newOrigin + offsetShift < 0) {
+    // @ts-ignore
     newRoot = new VNode(
       newRoot && newRoot.array.length ? [undefined, newRoot] : [],
       owner
@@ -584,6 +885,7 @@ function setListBounds(list, begin, end) {
 
   // New size might need creating a higher root.
   while (newTailOffset >= 1 << (newLevel + SHIFT)) {
+    // @ts-ignore
     newRoot = new VNode(
       newRoot && newRoot.array.length ? [newRoot] : [],
       owner
@@ -593,6 +895,8 @@ function setListBounds(list, begin, end) {
 
   // Locate or create the new tail.
   const oldTail = list._tail;
+  /** @type {VNode<T> | undefined | null} */
+  // @ts-ignore
   let newTail =
     newTailOffset < oldTailOffset
       ? listNodeFor(list, newCapacity - 1)
@@ -607,10 +911,12 @@ function setListBounds(list, begin, end) {
     newOrigin < oldCapacity &&
     oldTail.array.length
   ) {
+    // @ts-ignore
     newRoot = editableVNode(newRoot, owner);
     let node = newRoot;
     for (let level = newLevel; level > SHIFT; level -= SHIFT) {
       const idx = (oldTailOffset >>> level) & MASK;
+      // @ts-ignore
       node = node.array[idx] = editableVNode(node.array[idx], owner);
     }
     node.array[(oldTailOffset >>> SHIFT) & MASK] = oldTail;
@@ -636,6 +942,7 @@ function setListBounds(list, begin, end) {
     // Identify the new top root node of the subtree of the old root.
     while (newRoot) {
       const beginIndex = (newOrigin >>> newLevel) & MASK;
+      // @ts-ignore TODO check this
       if ((beginIndex !== newTailOffset >>> newLevel) & MASK) {
         break;
       }
@@ -643,11 +950,13 @@ function setListBounds(list, begin, end) {
         offsetShift += (1 << newLevel) * beginIndex;
       }
       newLevel -= SHIFT;
+      // @ts-ignore
       newRoot = newRoot.array[beginIndex];
     }
 
     // Trim the new sides of the new root.
     if (newRoot && newOrigin > oldOrigin) {
+      // @ts-ignore
       newRoot = newRoot.removeBefore(owner, newLevel, newOrigin - offsetShift);
     }
     if (newRoot && newTailOffset < oldTailOffset) {
@@ -674,9 +983,14 @@ function setListBounds(list, begin, end) {
     list.__altered = true;
     return list;
   }
-  return makeList(newOrigin, newCapacity, newLevel, newRoot, newTail);
+  return new ListImpl(newOrigin, newCapacity, newLevel, newRoot, newTail);
 }
 
+/**
+ *
+ * @param {number} size
+ * @returns {number}
+ */
 function getTailOffset(size) {
   return size < SIZE ? 0 : ((size - 1) >>> SHIFT) << SHIFT;
 }

@@ -16,31 +16,31 @@ import { withMutations } from './methods/withMutations';
 
 import { OrderedSet } from './OrderedSet';
 
-export const Set = value =>
+export const Set = (value) =>
   value === undefined || value === null
     ? emptySet()
     : isSet(value) && !isOrdered(value)
-    ? value
-    : emptySet().withMutations(set => {
-        const iter = SetCollection(value);
-        assertNotInfinite(iter.size);
-        iter.forEach(v => set.add(v));
-      });
+      ? value
+      : emptySet().withMutations((set) => {
+          const iter = SetCollection(value);
+          assertNotInfinite(iter.size);
+          iter.forEach((v) => set.add(v));
+        });
 
 Set.of = function (/*...values*/) {
   return Set(arguments);
 };
 
-Set.fromKeys = value => Set(KeyedCollection(value).keySeq());
+Set.fromKeys = (value) => Set(KeyedCollection(value).keySeq());
 
-Set.intersect = sets => {
+Set.intersect = (sets) => {
   sets = Collection(sets).toArray();
   return sets.length
     ? SetPrototype.intersect.apply(Set(sets.pop()), sets)
     : emptySet();
 };
 
-Set.union = sets => {
+Set.union = (sets) => {
   const setArray = Collection(sets).toArray();
   return setArray.length
     ? SetPrototype.union.apply(Set(setArray.pop()), setArray)

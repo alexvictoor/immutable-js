@@ -6,16 +6,16 @@ import { emptyList } from './List';
 import { DELETE, NOT_SET, SIZE } from './TrieUtils';
 import assertNotInfinite from './utils/assertNotInfinite';
 
-export const OrderedMap = value =>
+export const OrderedMap = (value) =>
   value === undefined || value === null
     ? emptyOrderedMap()
     : isOrderedMap(value)
-    ? value
-    : emptyOrderedMap().withMutations(map => {
-        const iter = KeyedCollection(value);
-        assertNotInfinite(iter.size);
-        iter.forEach((v, k) => map.set(k, v));
-      });
+      ? value
+      : emptyOrderedMap().withMutations((map) => {
+          const iter = KeyedCollection(value);
+          assertNotInfinite(iter.size);
+          iter.forEach((v, k) => map.set(k, v));
+        });
 OrderedMap.of = function (/*...values*/) {
   return OrderedMap(arguments);
 };

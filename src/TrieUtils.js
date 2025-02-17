@@ -1,3 +1,5 @@
+/** @import { IndexedCollectionImpl } from "./Collection"; */
+
 // Used for setting prototype methods that IE8 chokes on.
 export const DELETE = 'delete';
 
@@ -33,6 +35,12 @@ export function ensureSize(iter) {
   return iter.size;
 }
 
+/**
+ * @template V
+ * @param {IndexedCollectionImpl<V>} iter
+ * @param {number} index
+ * @returns {number}
+ */
 export function wrapIndex(iter, index) {
   // This implements "is array index" which the ECMAString spec defines as:
   //
@@ -55,6 +63,13 @@ export function returnTrue() {
   return true;
 }
 
+/**
+ * Determines if the slice covers the whole collection.
+ * @param {number | undefined} begin
+ * @param {number | undefined} end
+ * @param {number | undefined} size
+ * @returns {boolean}
+ */
 export function wholeSlice(begin, end, size) {
   return (
     ((begin === 0 && !isNeg(begin)) ||
@@ -63,14 +78,33 @@ export function wholeSlice(begin, end, size) {
   );
 }
 
+/**
+ * Resolves the begin index for a slice operation.
+ * @param {number | undefined} begin
+ * @param {number | undefined} size
+ * @returns {number}
+ */
 export function resolveBegin(begin, size) {
   return resolveIndex(begin, size, 0);
 }
 
+/**
+ * Resolves the end index for a slice operation.
+ * @param {number | undefined} end
+ * @param {number | undefined} size
+ * @returns {number}
+ */
 export function resolveEnd(end, size) {
   return resolveIndex(end, size, size);
 }
 
+/**
+ * Resolves an index for a slice operation, handling negative and undefined values.
+ * @param {number | undefined} index
+ * @param {number | undefined} size
+ * @param {number} defaultIndex
+ * @returns {number}
+ */
 function resolveIndex(index, size, defaultIndex) {
   // Sanitize indices using this shorthand for ToInt32(argument)
   // http://www.ecma-international.org/ecma-262/6.0/#sec-toint32
@@ -85,6 +119,11 @@ function resolveIndex(index, size, defaultIndex) {
         : Math.min(size, index) | 0;
 }
 
+/**
+ * Determines if a value is negative, including -0.
+ * @param {number} value
+ * @returns {boolean}
+ */
 function isNeg(value) {
   // Account for -0 which is negative, but not less than 0.
   return value < 0 || (value === 0 && 1 / value === -Infinity);

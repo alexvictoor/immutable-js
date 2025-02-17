@@ -1,3 +1,4 @@
+/** @import * as Immutable from '../type-definitions/immutable'*/
 import {
   NOT_SET,
   ensureSize,
@@ -42,17 +43,40 @@ import {
 import { Map } from './Map';
 import { OrderedMap } from './OrderedMap';
 
+/** @import { CollectionImpl} from './Collection'*/
+
+/**
+ * @template K, V
+ * @extends {KeyedSeqImpl<K, V>}
+ */
 export class ToKeyedSequence extends KeyedSeqImpl {
+
+  /**
+   * 
+   * @param {CollectionImpl<K, V>} indexed 
+   * @param {*} useKeys 
+   */
   constructor(indexed, useKeys) {
     this._iter = indexed;
     this._useKeys = useKeys;
     this.size = indexed.size;
   }
 
+  /**
+   * 
+   * @param {K} key 
+   * @param {V} notSetValue 
+   * @returns {V}
+   */
   get(key, notSetValue) {
     return this._iter.get(key, notSetValue);
   }
 
+  /**
+   * 
+   * @param {K} key 
+   * @returns {boolean}
+   */
   has(key) {
     return this._iter.has(key);
   }
@@ -87,12 +111,25 @@ export class ToKeyedSequence extends KeyedSeqImpl {
 }
 ToKeyedSequence.prototype[IS_ORDERED_SYMBOL] = true;
 
+/**
+ * @template K, V
+ * @extends {IndexedSeqImpl<V>}
+ */
 export class ToIndexedSequence extends IndexedSeqImpl {
+  /**
+   * 
+   * @param {Immutable.Collection<K, V>} iter 
+   */
   constructor(iter) {
     this._iter = iter;
     this.size = iter.size;
   }
 
+  /**
+   * 
+   * @param {V} value 
+   * @returns {boolean}
+   */
   includes(value) {
     return this._iter.includes(value);
   }
@@ -595,7 +632,7 @@ export function skipWhileFactory(collection, predicate, context, useKeys) {
   return skipSequence;
 }
 
-class ConcatSeq extends Seq {
+class ConcatSeq extends SeqImpl {
   constructor(iterables) {
     this._wrappedIterables = iterables.flatMap((iterable) => {
       if (iterable._wrappedIterables) {
@@ -937,10 +974,10 @@ export function reify(iter, seq) {
   return iter === seq
     ? iter
     : isSeq(iter)
-    ? seq
-    : iter.create
-    ? iter.create(seq)
-    : iter.constructor(seq);
+      ? seq
+      : iter.create
+        ? iter.create(seq)
+        : iter.constructor(seq);
 }
 
 function validateEntry(entry) {
@@ -962,8 +999,8 @@ function makeSequence(collection) {
     (isKeyed(collection)
       ? KeyedSeqImpl
       : isIndexed(collection)
-      ? IndexedSeqImpl
-      : SetSeqImpl
+        ? IndexedSeqImpl
+        : SetSeqImpl
     ).prototype
   );
 }

@@ -1,5 +1,5 @@
+/** @import * as Immutable from '../type-definitions/immutable'*/
 import { wrapIndex } from './TrieUtils';
-import { CollectionImpl } from './Collection';
 import { IS_SEQ_SYMBOL, isSeq } from './predicates/isSeq';
 import { isImmutable } from './predicates/isImmutable';
 import { isCollection } from './predicates/isCollection';
@@ -20,18 +20,31 @@ import {
 
 import hasOwnProperty from './utils/hasOwnProperty';
 import isArrayLike from './utils/isArrayLike';
+import { CollectionImpl } from './Collection';
 
-export const Seq = value =>
+/**
+ * @type  {typeof Immutable.Seq}
+ */
+export const Seq = (value) =>
   value === undefined || value === null
     ? emptySequence()
     : isImmutable(value)
-    ? value.toSeq()
-    : seqFromValue(value);
+      ? value.toSeq()
+      : seqFromValue(value);
+
+/**
+ * @template K, V
+ * @extends {CollectionImpl<K, V>}
+ */
 export class SeqImpl extends CollectionImpl {
   toSeq() {
     return this;
   }
 
+  /**
+   * 
+   * @returns {string}
+   */
   toString() {
     return this.__toString('Seq {', '}');
   }
@@ -44,7 +57,14 @@ export class SeqImpl extends CollectionImpl {
     return this;
   }
 
-  // abstract __iterateUncached(fn, reverse)
+  /**
+   * @abstract
+   * @param {*} _fn
+   * @param {boolean} _reverse
+   */
+  __iterateUncached(_fn, _reverse) {
+    throw new Error('Not implemented!');
+  }
 
   __iterate(fn, reverse) {
     const cache = this._cache;
@@ -62,7 +82,14 @@ export class SeqImpl extends CollectionImpl {
     return this.__iterateUncached(fn, reverse);
   }
 
-  // abstract __iteratorUncached(type, reverse)
+  /**
+   * @abstract
+   * @param {*} fn
+   * @param {boolean} _reverse
+   */
+  __iteratorUncached(_type, _reverse) {
+    throw new Error('Not implemented!');
+  }
 
   __iterator(type, reverse) {
     const cache = this._cache;
@@ -81,35 +108,57 @@ export class SeqImpl extends CollectionImpl {
   }
 }
 
-export const KeyedSeq = value =>
+/**
+ * @type  {typeof Immutable.Seq.Keyed}
+ */
+export const KeyedSeq = (value) =>
   value === undefined || value === null
     ? emptySequence().toKeyedSeq()
     : isCollection(value)
-    ? isKeyed(value)
-      ? value.toSeq()
-      : value.fromEntrySeq()
-    : isRecord(value)
-    ? value.toSeq()
-    : keyedSeqFromValue(value);
+      ? isKeyed(value)
+        ? value.toSeq()
+        : value.fromEntrySeq()
+      : isRecord(value)
+        ? value.toSeq()
+        : keyedSeqFromValue(value);
+
+/**
+ * `Seq` which represents key-value pairs.
+ * @template K, V
+ * @extends {SeqImpl<K, V>}
+ * @extends {KeyedCollectionImpl<K, V>}
+ */
 export class KeyedSeqImpl extends SeqImpl {
   toKeyedSeq() {
     return this;
   }
 }
 
-export const IndexedSeq = value =>
+/**
+ * @type  {typeof Immutable.Seq.Indexed}
+ */
+export const IndexedSeq = (value) =>
   value === undefined || value === null
     ? emptySequence()
     : isCollection(value)
-    ? isKeyed(value)
-      ? value.entrySeq()
-      : value.toIndexedSeq()
-    : isRecord(value)
-    ? value.toSeq().entrySeq()
-    : indexedSeqFromValue(value);
+      ? isKeyed(value)
+        ? value.entrySeq()
+        : value.toIndexedSeq()
+      : isRecord(value)
+        ? value.toSeq().entrySeq()
+        : indexedSeqFromValue(value);
+
 IndexedSeq.of = function (/*...values*/) {
   return IndexedSeq(arguments);
 };
+
+/**
+ * `Seq` which represents an ordered indexed list of values.
+ *
+ * @template T
+ * @extends {SeqImpl<number, T>, IndexedCollectionImpl<T>}
+ * @extends {IndexedCollectionImpl<T>}
+ */
 export class IndexedSeqImpl extends SeqImpl {
   toIndexedSeq() {
     return this;
@@ -119,7 +168,7 @@ export class IndexedSeqImpl extends SeqImpl {
     return this.__toString('Seq [', ']');
   }
 }
-export const SetSeq = value =>
+export const SetSeq = (value) =>
   (isCollection(value) && !isAssociative(value)
     ? value
     : IndexedSeq(value)
@@ -129,6 +178,16 @@ SetSeq.of = function (/*...values*/) {
   return SetSeq(arguments);
 };
 
+/**
+ * `Seq` which represents a set of values.
+ *
+ * Because `Seq` are often lazy, `Seq.Set` does not provide the same guarantee
+ * of value uniqueness as the concrete `Set`.
+ *
+ * @template T
+ * @extends {SeqImpl<T, T>}
+ * @implements {SetCollectionImpl<T>}
+ */
 export class SetSeqImpl extends SeqImpl {
   toSetSeq() {
     return this;
@@ -144,6 +203,10 @@ SeqImpl.prototype[IS_SEQ_SYMBOL] = true;
 
 // #pragma Root Sequences
 
+/**
+ * @template T
+ * @extends {IndexedSeqImpl<T>}
+ */
 export class ArraySeq extends IndexedSeqImpl {
   constructor(array) {
     super();

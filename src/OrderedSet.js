@@ -6,16 +6,16 @@ import { isOrderedSet } from './predicates/isOrderedSet';
 import { SetImpl } from './Set';
 import assertNotInfinite from './utils/assertNotInfinite';
 
-export const OrderedSet = value =>
+export const OrderedSet = (value) =>
   value === undefined || value === null
     ? emptyOrderedSet()
     : isOrderedSet(value)
-    ? value
-    : emptyOrderedSet().withMutations(set => {
-        const iter = SetCollection(value);
-        assertNotInfinite(iter.size);
-        iter.forEach(v => set.add(v));
-      });
+      ? value
+      : emptyOrderedSet().withMutations((set) => {
+          const iter = SetCollection(value);
+          assertNotInfinite(iter.size);
+          iter.forEach((v) => set.add(v));
+        });
 
 OrderedSet.of = function (/*...values*/) {
   return OrderedSet(arguments);

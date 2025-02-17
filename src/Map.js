@@ -32,16 +32,16 @@ import { wasAltered } from './methods/wasAltered';
 
 import { OrderedMap } from './OrderedMap';
 
-export const Map = value =>
+export const Map = (value) =>
   value === undefined || value === null
     ? emptyMap()
     : isMap(value) && !isOrdered(value)
-    ? value
-    : emptyMap().withMutations(map => {
-        const iter = KeyedCollection(value);
-        assertNotInfinite(iter.size);
-        iter.forEach((v, k) => map.set(k, v));
-      });
+      ? value
+      : emptyMap().withMutations((map) => {
+          const iter = KeyedCollection(value);
+          assertNotInfinite(iter.size);
+          iter.forEach((v, k) => map.set(k, v));
+        });
 
 export class MapImpl extends KeyedCollectionImpl {
   create(value) {
