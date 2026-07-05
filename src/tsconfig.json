@@ -1,0 +1,62 @@
+{
+  // Maximal-strictness type-checking of the library source (type-check only —
+  // emit is handled by Rollup). Every flag TypeScript offers for soundness and
+  // code hygiene is enabled; the migration target is zero errors here with no
+  // `any` and no unsafe casts.
+  "compilerOptions": {
+    "target": "es2015",
+    "lib": ["es2015"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "types": [],
+
+    // The migration is complete: src/ is 100% TypeScript. Keeping allowJs off
+    // makes tsc itself reject any stray .js file that would otherwise be
+    // bundled and tested without ever being type-checked.
+    "allowJs": false,
+
+    "isolatedModules": true,
+    // The build pipeline is transpile-only (per-file type stripping), so
+    // type-only imports MUST be spelled `import type` for the stripper to see
+    // them; this flag makes the checker enforce exactly that discipline.
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    // --- strictness: everything on ---
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+
+    // Every type-safety flag above is at maximum. `noImplicitOverride` is
+    // intentionally left off: in this mixin/prototype architecture a class
+    // method routinely "overrides" a member inherited only through a base
+    // class's declaration-merged public interface, so requiring an `override`
+    // keyword there adds churn without any soundness benefit.
+    "noImplicitOverride": false
+  },
+  "include": ["**/*.ts"],
+  // The tstyche type tests deliberately contain type ERRORS (inside
+  // `expect(...).type.toRaiseError()` assertions), so they cannot be part of
+  // this zero-error project; tstyche compiles them itself (`npm run
+  // test:types`) with this file's compilerOptions.
+  "exclude": ["__typetests__"]
+}

@@ -93,6 +93,28 @@
   },
   "overrides": [
     {
+      "files": ["src/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "error",
+        "@typescript-eslint/ban-ts-comment": "error",
+        "@typescript-eslint/consistent-type-assertions": [
+          "error",
+          { "assertionStyle": "as", "objectLiteralTypeAssertions": "allow" }
+        ],
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+        ],
+        "@typescript-eslint/no-unsafe-declaration-merging": "off",
+        "lines-between-class-members": "off",
+        "no-underscore-dangle": "off",
+        "dot-notation": "off",
+        "no-useless-constructor": "off",
+        "no-empty-function": "off",
+        "@typescript-eslint/no-useless-constructor": "off"
+      }
+    },
+    {
       "files": ["__tests__/*"],
       "rules": {
         "import/no-unresolved": [

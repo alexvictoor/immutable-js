@@ -1,17 +1,33 @@
 import path from 'path';
-import buble from '@rollup/plugin-buble';
+import fs from 'fs';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import terser from '@rollup/plugin-terser';
 import copyright from './copyright.mjs';
+import tsTranspile from './rollup-ts-transpile.mjs';
 
 const SRC_DIR = path.resolve('src');
 const DIST_DIR = path.resolve('dist');
 
+// The entry file may be either JS or TS during the migration.
+const ENTRY = ['Immutable.ts', 'Immutable.js']
+  .map(f => path.join(SRC_DIR, f))
+  .find(f => fs.existsSync(f));
+
+// Resolve extensionless relative imports against both .ts and .js so a mixed
+// (part-migrated) tree builds without touching every import statement.
+const EXTENSIONS = ['.ts', '.js', '.mjs', '.json'];
+
 export default [
   {
-    input: path.join(SRC_DIR, 'Immutable.js'),
-    plugins: [commonjs(), json(), buble()],
+    input: ENTRY,
+    plugins: [
+      nodeResolve({ extensions: EXTENSIONS }),
+      commonjs(),
+      json(),
+      tsTranspile(),
+    ],
     output: [
       // umd build
       {

@@ -143,3 +143,19 @@ describe('flatten', () => {
     });
   });
 });
+
+describe('flatten.reverse iteration', () => {
+  it('preserves original keys when iterating a reversed keyed flattened seq', () => {
+    const seq = Seq([
+      [1, 2],
+      [3, 4],
+    ])
+      .flatten(true)
+      .toKeyedSeq()
+      .reverse();
+    expect(Array.from(seq.entries())).toEqual([
+      [1, [3, 4]],
+      [0, [1, 2]],
+    ]);
+  });
+});

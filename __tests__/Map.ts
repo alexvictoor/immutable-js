@@ -1,4 +1,4 @@
-import { fromJS, is, List, Map, Range, Record, Seq } from 'immutable';
+import { fromJS, is, List, Map, Range, Record, Repeat, Seq } from 'immutable';
 import * as jasmineCheck from 'jasmine-check';
 
 jasmineCheck.install();
@@ -566,6 +566,15 @@ describe('Map', () => {
           ]),
         ],
       ])
+    );
+  });
+});
+
+describe('deleteAll with infinite collections', () => {
+  it('throws instead of iterating forever', () => {
+    const m = Map({ a: 1 });
+    expect(() => m.deleteAll(Repeat('a'))).toThrow(
+      'Cannot perform this action with an infinite size.'
     );
   });
 });

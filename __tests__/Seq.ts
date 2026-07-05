@@ -139,3 +139,19 @@ describe('Seq', () => {
     ]);
   });
 });
+
+describe('takeWhile with a non-boolean predicate (behavior parity with 5.0.x)', () => {
+  // The legacy `&&` chain in takeWhile's __iterate only aborts on a result
+  // that is strictly `=== false`; a falsy non-boolean result (0 here) skips
+  // the entry but keeps scanning. The iterator path, by contrast, stops at
+  // the first falsy result. Quirky, but long-shipped behavior.
+  const oddish = (x: number) => (x % 2) as unknown as boolean;
+
+  it('continues past falsy-but-not-false results when reducing', () => {
+    expect(Seq([1, 2, 3]).takeWhile(oddish).toArray()).toEqual([1, 3]);
+  });
+
+  it('stops at the first falsy result when iterating', () => {
+    expect(Array.from(Seq([1, 2, 3]).takeWhile(oddish))).toEqual([1]);
+  });
+});

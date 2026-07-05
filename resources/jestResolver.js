@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const pkg = require('../package.json');
 
@@ -8,8 +9,10 @@ module.exports = (request, options) => {
       return path.resolve(options.rootDir, pkg.main);
     }
 
-    // In development mode, we want sourcemaps, live reload, etc., so point to the src/ directory
-    return `${options.rootDir}/src/Immutable.js`;
+    // In development mode, we want sourcemaps, live reload, etc., so point to
+    // the src/ directory. The entry may be TS or JS during the migration.
+    const ts = `${options.rootDir}/src/Immutable.ts`;
+    return fs.existsSync(ts) ? ts : `${options.rootDir}/src/Immutable.js`;
   }
 
   // Call the defaultResolver, if we want to load non-immutable
